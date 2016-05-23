@@ -48,7 +48,13 @@ go build github.com/flzyup/entwaremirror
 
 ### Step 3
 
-Copy the config.toml file with the same location as entwaremirror binaries
+Copy the 
+
+`
+$GOPATH/src/github.com/flzyup/entwaremirror/config.toml 
+`
+
+file with the same location as entwaremirror binary
 
 ### Step 4
 
