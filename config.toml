@@ -1,0 +1,6 @@
+title = "config file"
+
+[global]
+    debug = true
+    root_url = "http://pkg.entware.net/binaries/"
+    download_folder = "/Users/yonnielu/Desktop/pkg/binaries/"
