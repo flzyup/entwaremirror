@@ -102,6 +102,10 @@ func fetch_list(ch chan *Msg, url string) {
 						//log.Println("link = " + link)
 						if strings.HasSuffix(link, "/") {
 							link = url + link
+							if strings.Contains(link, "/archive") {
+								log.Printf("Skip download archive folder: %s", link)
+								continue
+							}
 							if strings.Contains(link, "arm") ||
 								strings.Contains(link, "others") ||
 										strings.Contains(link, "mips") {
