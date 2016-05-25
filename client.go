@@ -22,7 +22,7 @@ const (
 )
 
 var (
-	Fetch_Delay = time.Millisecond * 300
+	Fetch_Delay = time.Millisecond * 400
 	Config tomlConfig
 )
 
@@ -35,10 +35,16 @@ func fetch_detail(ch chan *Msg, rootUrl string, downloadFolder string) {
 	for {
 		data := <-ch
 
+		file := strings.Replace(data.Url, rootUrl, downloadFolder, 1);
+
+		if _, err := os.Stat(file); err == nil {
+			log.Printf("File: %s exists, skip download, \n**WARNING**, We don't promise the file is downloaded complete but just check the file exists or not!*", file)
+			continue
+		}
 		delay := get_delay_duration();
 		if Config.Global.Debug { log.Printf("Delay %s to download url = %s", delay.String(), data.Url)}
-		time.Sleep(Fetch_Delay)
-		file := strings.Replace(data.Url, rootUrl, downloadFolder, 1);
+		time.Sleep(delay)
+
 		folder := file[0:strings.LastIndex(file,"/")]
 		//log.Println("local folder = " + folder)
 
@@ -120,7 +126,7 @@ func fetch_list(ch chan *Msg, url string) {
 
 func get_delay_duration() time.Duration {
 	rand.Seed(time.Now().UnixNano())
-	delay_duration := Fetch_Delay + time.Duration(time.Millisecond * time.Duration(rand.Int31n(300)))
+	delay_duration := Fetch_Delay + time.Duration(time.Millisecond * time.Duration(rand.Int31n(500)))
 	//log.Println("delay duration = " + delay_duration.String())
 	return delay_duration
 }
