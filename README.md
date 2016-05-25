@@ -1,6 +1,6 @@
 # Entware mirror client
 
-### A grab client for clone the official entware mirror site
+### A spider client for clone the official entware package site
 
 
 **A golang project**
