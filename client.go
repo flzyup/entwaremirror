@@ -53,25 +53,27 @@ func fetch_detail(ch chan *Msg, signal chan bool, rootUrl string, downloadFolder
 			if err := os.MkdirAll(folder, 0755); err != nil {
 				log.Printf("make folder = %s failed! re-add to channel", folder)
 				ch <- data
+				continue
+			}
+
+			if resp, err := http.Get(data.Url); err != nil {
+				log.Printf("download: %s error: %s, re-add", data.Url, err.Error())
+				ch <- data
 			} else {
-				if resp, err := http.Get(data.Url); err != nil {
-					log.Printf("download: %s error: %s, re-add", data.Url, err.Error())
+				defer resp.Body.Close()
+				if f, err := os.Create(file); err != nil {
+					log.Printf("create file: %s failed, re-add", file)
 					ch <- data
 				} else {
-					defer resp.Body.Close()
-					if f, err := os.Create(file); err != nil {
-						log.Printf("create file: %s failed, re-add", file)
+					if length, err := io.Copy(f, resp.Body); err != nil {
+						log.Printf("copy stream from url:%s failed, re-add", data.Url)
 						ch <- data
 					} else {
-						if length, err := io.Copy(f, resp.Body); err != nil {
-							log.Printf("copy stream from url:%s failed, re-add", data.Url)
-							ch <- data
-						} else {
-							if Config.Global.Debug { log.Printf("Download %d from url: %s", length, data.Url) }
-						}
+						if Config.Global.Debug { log.Printf("Download %d bytes from url: %s", length, data.Url) }
 					}
 				}
 			}
+
 		default:
 			log.Println("No more detail link found")
 			noMsgCount++
