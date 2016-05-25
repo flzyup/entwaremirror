@@ -31,47 +31,56 @@ type Msg struct  {
 	Type int
 }
 
-func fetch_detail(ch chan *Msg, rootUrl string, downloadFolder string) {
+func fetch_detail(ch chan *Msg, signal chan bool, rootUrl string, downloadFolder string) {
+	noMsgCount := 0
+
 	for {
-		data := <-ch
+		select {
+		case data := <-ch:
+			file := strings.Replace(data.Url, rootUrl, downloadFolder, 1);
 
-		file := strings.Replace(data.Url, rootUrl, downloadFolder, 1);
+			if _, err := os.Stat(file); err == nil {
+				log.Printf("File: %s exists, skip download, \n**WARNING**, We don't promise the file is downloaded complete but just check the file exists or not!*", file)
+				continue
+			}
+			delay := get_delay_duration();
+			if Config.Global.Debug { log.Printf("Delay %s to download url = %s", delay.String(), data.Url)}
+			time.Sleep(delay)
 
-		if _, err := os.Stat(file); err == nil {
-			log.Printf("File: %s exists, skip download, \n**WARNING**, We don't promise the file is downloaded complete but just check the file exists or not!*", file)
-			continue
-		}
-		delay := get_delay_duration();
-		if Config.Global.Debug { log.Printf("Delay %s to download url = %s", delay.String(), data.Url)}
-		time.Sleep(delay)
-
-		folder := file[0:strings.LastIndex(file,"/")]
+			folder := file[0:strings.LastIndex(file,"/")]
 		//log.Println("local folder = " + folder)
 
-		if err := os.MkdirAll(folder, 0755); err != nil {
-			log.Printf("make folder = %s failed! re-add to channel", folder)
-			ch <- data
-		} else {
-			if resp, err := http.Get(data.Url); err != nil {
-				log.Printf("download: %s error: %s, re-add", data.Url, err.Error())
+			if err := os.MkdirAll(folder, 0755); err != nil {
+				log.Printf("make folder = %s failed! re-add to channel", folder)
 				ch <- data
 			} else {
-				defer resp.Body.Close()
-				if f, err := os.Create(file); err != nil {
-					log.Printf("create file: %s failed, re-add", file)
+				if resp, err := http.Get(data.Url); err != nil {
+					log.Printf("download: %s error: %s, re-add", data.Url, err.Error())
 					ch <- data
 				} else {
-					if length, err := io.Copy(f, resp.Body); err != nil {
-						log.Printf("copy stream from url:%s failed, re-add", data.Url)
+					defer resp.Body.Close()
+					if f, err := os.Create(file); err != nil {
+						log.Printf("create file: %s failed, re-add", file)
 						ch <- data
 					} else {
-						if Config.Global.Debug { log.Printf("Download %d from url: %s", length, data.Url) }
+						if length, err := io.Copy(f, resp.Body); err != nil {
+							log.Printf("copy stream from url:%s failed, re-add", data.Url)
+							ch <- data
+						} else {
+							if Config.Global.Debug { log.Printf("Download %d from url: %s", length, data.Url) }
+						}
 					}
 				}
 			}
+		default:
+			log.Println("No more detail link found")
+			noMsgCount++
+			if noMsgCount >= 3 {
+				log.Printf("No more detail link found, wait %d times", noMsgCount)
+				signal <- true
+			}
+			time.Sleep(time.Second * 5)
 		}
-
-
 	}
 }
 
@@ -147,10 +156,19 @@ func main() {
 	}
 
 	ch := make(chan *Msg, 100000)
-	go fetch_detail(ch, Config.Global.Root_url, Config.Global.Download_folder)
+	signal := make(chan bool)
+
+	go fetch_detail(ch, signal, Config.Global.Root_url, Config.Global.Download_folder)
 	fetch_list(ch, Config.Global.Root_url)
-	for {
-		log.Println("waiting...")
-		time.Sleep(time.Second * 5)
+
+	loop: for {
+		select {
+		case <-signal:
+			log.Println("Got signal, exit!")
+			break loop
+		default:
+			log.Printf("Waiting...")
+			time.Sleep(time.Second * 5)
+		}
 	}
 }
