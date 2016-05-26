@@ -48,7 +48,6 @@ func fetch_detail(ch chan *Msg, signal chan bool, rootUrl string, downloadFolder
 			time.Sleep(delay)
 
 			folder := file[0:strings.LastIndex(file,"/")]
-		//log.Println("local folder = " + folder)
 
 			if err := os.MkdirAll(folder, 0755); err != nil {
 				log.Printf("make folder = %s failed! re-add to channel", folder)
@@ -163,14 +162,7 @@ func main() {
 	go fetch_detail(ch, signal, Config.Global.Root_url, Config.Global.Download_folder)
 	fetch_list(ch, Config.Global.Root_url)
 
-	loop: for {
-		select {
-		case <-signal:
-			log.Println("Got signal, exit!")
-			break loop
-		default:
-			log.Printf("Waiting...")
-			time.Sleep(time.Second * 5)
-		}
-	}
+	// Waiting for the complete signal
+	<-signal
+	log.Println("Got signal, exit!")
 }
